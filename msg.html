@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Client</title>
+</head>
+<body>
+    <input type="text" id="message" placeholder="Type your message">
+    <button onclick="sendMessage()">Send</button>
+    <button onclick="fetchPendingMessages()">Fetch Pending Messages</button>
+    <button onclick="disconnect()">Disconnect</button>
+    <button onclick="reconnect()">Reconnect</button>
+    <div id="messagesContainer"></div>
+
+    <script>
+        var clientId;
+        var socket;
+
+        // Function to generate client ID based on joining order
+        function generateClientId() {
+            var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            if (!localStorage.clientId) {
+                localStorage.clientId = characters.charAt(Object.keys(localStorage).length);
+            }
+            clientId = localStorage.clientId;
+        }
+
+        function connectWebSocket() {
+            socket = new WebSocket('ws://localhost:8080/ws?clientId=' + clientId);
+
+            socket.onopen = function(event) {
+                console.log('Connected to WebSocket server with client ID:', clientId);
+            };
+
+            socket.onmessage = function(event) {
+                const message = event.data;
+                console.log('Received message:', message);
+                displayMessage(message);
+            };
+        }
+
+        function sendMessage() {
+            const messageInput = document.getElementById('message');
+            const message = messageInput.value;
+            if (message.trim() !== '') {
+                socket.send(message);
+                messageInput.value = '';
+            }
+        }
+
+        function fetchPendingMessages() {
+            // Send request to server to fetch pending messages
+            fetch('/fetchPendingMessages?clientId=' + clientId)
+                .then(response => response.json())
+                .then(messages => {
+                    messages.forEach(message => {
+                        displayMessage(message);
+                    });
+                })
+                .catch(error => console.error('Error fetching pending messages:', error));
+        }
+
+        function disconnect() {
+            socket.close();
+            console.log('Disconnected from WebSocket server');
+        }
+
+        function reconnect() {
+            connectWebSocket();
+            console.log('Reconnected to WebSocket server with client ID:', clientId);
+        }
+
+        function displayMessage(message) {
+            const messagesContainer = document.getElementById('messagesContainer');
+            const messageElement = document.createElement('div');
+            messageElement.textContent = message;
+            messagesContainer.appendChild(messageElement);
+        }
+
+        // On page load, generate client ID and connect to WebSocket
+        window.onload = function() {
+            generateClientId();
+            connectWebSocket();
+        };
+    </script>
+</body>
+</html>
